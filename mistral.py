@@ -11,6 +11,7 @@ def generate_coverLetter(cv_text, job_description):
         # Define the prompt for generating the cover letter
         prompt = f"""
             Generate a professional and engaging cover letter based on the following CV and job description:
+            You must only include text content starting with 'Dear Hiring Manager,' and ending with 'Sincerely, NAME'.
 
             CV:
             {cv_text}
@@ -36,7 +37,8 @@ def generate_coverLetter(cv_text, job_description):
             messages=messages,
             response_format={
                 "type": "text",  # Assuming the response is plain text
-            }
+            },
+            max_tokens=800
         )
         return chat_response.choices[0].message.content
     except Exception as e:

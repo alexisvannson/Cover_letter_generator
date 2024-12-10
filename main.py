@@ -2,58 +2,13 @@ from dotenv import load_dotenv
 import streamlit as st
 from io import BytesIO
 from PyPDF2 import PdfReader
-import os
-import requests
+from mistral import generate_coverLetter
 from fpdf import FPDF
+from datetime import datetime
 
 # load the environment variables
 load_dotenv()
 
-def generate_cover_letter(cv, fiche_poste, api_key=None, model="mistral-medium", temperature=0.3):
-    # Retrieve the API key from the environment if not provided
-    api_key = os.getenv("MISTRAL_API_KEY") if api_key is None else api_key
-    
-    if not api_key:
-        raise ValueError("API key not found. Please set the MISTRAL_API_KEY environment variable or pass it as an argument.")
-
-    # Mistral API endpoint
-    url = "https://api.mistral.ai/v1/chat/completions"
-
-    # Create the prompt
-    prompt = f"""
-    Generate a professional cover letter for the following job description:
-
-    {fiche_poste}
-
-    Use the following CV details to tailor the cover letter:
-
-    {cv}
-
-    The cover letter should be professional and directly highlight the relevant skills and experiences.
-    """
-
-    # Data payload for the API request
-    data = {
-        "model": model,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": temperature
-    }
-
-    # Send the request
-    response = requests.post(
-        url,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json=data
-    )
-
-    # Return the generated text or handle errors
-    if response.status_code == 200:
-        result = response.json()
-        return result["choices"][0]["message"]["content"]
-    else:
-        return f"Error: {response.status_code}, {response.text}"
 def save_text_as_pdf(text, output_path):
     pdf = FPDF()
     pdf.add_page()
@@ -66,9 +21,14 @@ def save_text_as_pdf(text, output_path):
 
     # Add title
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "Application for ML Engineer Internship at Klark", ln=True, align="C")
-    pdf.ln(5)
-
+    pdf.cell(0, 10, "Cover Letter", ln=True, align="C")
+    # Add date
+    pdf.set_font("Arial", "", 10)
+    pdf.cell(0, 7, f"{datetime.now().strftime('%B %d, %Y')}", ln=True, align="C")
+    pdf.ln(5)  # Add spacing after title
+    pdf.cell(0, 0, "", ln=True, border="T")  # Add a horizontal line
+    pdf.ln(5)  # Add spacing after title
+    
     # Reset font for body
     pdf.set_font("Arial", "", 11)
 
@@ -121,7 +81,7 @@ if st.button("Generate Cover Letter"):
     else:
         
         with st.spinner('Generating cover letter...'):
-            cover_letter_txt = generate_cover_letter(extracted_text, job_description)
+            cover_letter_txt = generate_coverLetter(extracted_text, job_description)
         st.success("Done!")
         
         file_path = "output.pdf"
@@ -131,7 +91,6 @@ if st.button("Generate Cover Letter"):
         
         st.subheader("Cover Letter")
         st.text_area("Generated Cover Letter", cover_letter_txt, height=200)
-        
         
         # Path to the PDF file
         
@@ -144,7 +103,7 @@ if st.button("Generate Cover Letter"):
             st.download_button(
                 label="Download PDF",
                 data=pdf_data,
-                file_name="output.pdf",
+                file_name="cover_letter.pdf",
                 mime="application/pdf"
             )
 

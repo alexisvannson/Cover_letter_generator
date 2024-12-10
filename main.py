@@ -2,14 +2,14 @@ from dotenv import load_dotenv
 import streamlit as st
 from io import BytesIO
 from PyPDF2 import PdfReader
-from mistral import generate_coverLetter
+from mistral import generate_coverLetter, get_jobInfos, get_personInfos
 from fpdf import FPDF
 from datetime import datetime
 
 # load the environment variables
 load_dotenv()
 
-def save_text_as_pdf(text, output_path):
+def save_text_as_pdf(text, output_path, jobInfos, personInfos):
     pdf = FPDF()
     pdf.add_page()
 
@@ -21,10 +21,10 @@ def save_text_as_pdf(text, output_path):
 
     # Add title
     pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "Cover Letter", ln=True, align="C")
+    pdf.cell(0, 10, jobInfos.get("title", "Cover Letter"), ln=True, align="C")
     # Add date
     pdf.set_font("Arial", "", 10)
-    pdf.cell(0, 7, f"{datetime.now().strftime('%B %d, %Y')}", ln=True, align="C")
+    pdf.cell(0, 7, personInfos.get("full_name", f"{datetime.now().strftime('%B %d, %Y')}"), ln=True, align="C")
     pdf.ln(5)  # Add spacing after title
     pdf.cell(0, 0, "", ln=True, border="T")  # Add a horizontal line
     pdf.ln(5)  # Add spacing after title
@@ -61,14 +61,18 @@ if uploaded_file is not None:
 
     try:
         extracted_text = extract_text_from_pdf(pdf_data)
-        st.subheader("Extracted Text:")
-        st.text_area("PDF Text Content", extracted_text, height=100)
+        extracted_text = st.text_area("Extracted Text", extracted_text, height=100)
     except Exception as e:
         st.error(f"An error occurred while processing the PDF: {e}")
+
 
 # User text input of the job description
 st.subheader("Job Description")
 job_description = st.text_area("Copy and paste the job description", height=200)
+
+# User text input of additional thoughts
+st.subheader("Additional Thoughts")
+additional_thougts = st.text_area("Any additional thoughts you want to include in the cover letter?", "", height=100)
 
 # Button to generate cover letter
 if st.button("Generate Cover Letter"):
@@ -79,33 +83,40 @@ if st.button("Generate Cover Letter"):
         st.warning("Please enter the job description.")
         
     else:
-        
         with st.spinner('Generating cover letter...'):
-            cover_letter_txt = generate_coverLetter(extracted_text, job_description)
+            cover_letter_txt = generate_coverLetter(extracted_text, job_description, additional_thougts)
+            
+        with st.spinner('Generating pdf...'):
+            file_path = "output.pdf"
+            
+            jobInfos = get_jobInfos(job_description)
+            personInfos = get_personInfos(extracted_text)
+            
+            # Generate the PDF
+            save_text_as_pdf(cover_letter_txt, file_path, jobInfos, personInfos)
+        
         st.success("Done!")
-        
-        file_path = "output.pdf"
-        
-        # Generate the PDF
-        save_text_as_pdf(cover_letter_txt, file_path)
-        
         st.subheader("Cover Letter")
         st.text_area("Generated Cover Letter", cover_letter_txt, height=200)
-        
+    
         # Path to the PDF file
         
         try:
             # Open the file in binary mode
             with open(file_path, "rb") as file:
-                pdf_data = file.read()
-
-            # Provide a download button
-            st.download_button(
-                label="Download PDF",
-                data=pdf_data,
-                file_name="cover_letter.pdf",
-                mime="application/pdf"
-            )
-
+                pdf_data = file.read()    
         except FileNotFoundError:
-            st.error(f"The file '{file_path}' was not found. Please ensure it exists in the specified path.")
+            st.error(f"The file '{file_path}' was not found. Please ensure it exists in the specified path.")  
+            
+        # Provide a download button
+        st.download_button(
+            label="Download PDF",
+            data=pdf_data,
+            file_name="cover_letter.pdf",
+            mime="application/pdf"
+        )
+            
+            
+
+        
+            

@@ -7,20 +7,24 @@ load_dotenv()
 API_KEY = os.getenv("MISTRAL_API_KEY")
 model = "mistral-small-latest"
 
-def generate_coverLetter(cv_text, job_description, additional_thougts = "", **kwargs):
+def generate_coverLetter(cv_text, job_description, additional_thougts = "", model = "mistral-small-latest", **kwargs):
+
     max_tokens = kwargs.get("max_tokens", 500)
     try:
         # Define the prompt for generating the cover letter
         prompt = f"""
             Generate a professional and engaging cover letter based on the following CV and job description:
+            Show that you alligns with the job description and that you have the skills and experience to succeed in the role and that you share the companies' values.
             You must only include text content starting with 'Dear ' and ending with 'Sincerely, NAME'.
+            Keep ALL paragraphs concise and to the point to ensure the cover letter is engaging and easy to read and short.
             Your total answer must be between 400 and at most 500 tokens long.
             
             ### Structure:
-            - Introduction (1-2 paragraphs)
+            - Introduction (1 paragraphs)
                 - State clearly in your opening sentence the purpose for your letter and a brief professional introduction.
                 - Specify why you are interested in that specific position and organization.
                 - Provide an overview of the main strengths and skills you will bring to the role.
+                - Show that you share the companies' values (if you know them).
             - Body (2-3 paragraphs)
                 - Cite a couple of examples from your experience that support your ability to be successful in the position or organization.
                 - Try not to simply repeat your resume in paragraph form, complement your resume by offering a little more detail about key experiences.
@@ -61,11 +65,16 @@ def generate_coverLetter(cv_text, job_description, additional_thougts = "", **kw
             },
             max_tokens=max_tokens,
         )
-        return chat_response.choices[0].message.content
+
+        return str(chat_response.choices[0].message.content)
     except Exception as e:
         return f"An error occurred while generating the cover letter: {e}"
     
-def get_jobInfos(job_description):
+def get_jobInfos(job_description, tires = 2, model = "mistral-small-latest"):
+    if tires <= 0:
+        return {
+            "error": "An error occurred while processing the job description"
+        }
     try:
         schema = {
             "type": "object",
@@ -107,11 +116,13 @@ def get_jobInfos(job_description):
         )
         return json.loads(chat_response.choices[0].message.content)
     except Exception as e:
-        return {
-            "error": f"An error occurred while processing the job description"
-        }
+        return get_jobInfos(job_description, tires - 1, model=model)
         
-def get_personInfos(cv_text):
+def get_personInfos(cv_text, tries = 2, model = "mistral-small-latest"):
+    if tries <= 0:
+        return {
+            "error": "An error occurred while processing the CV"
+        }
     try:
         schema = {
             "type": "object",
@@ -154,6 +165,4 @@ def get_personInfos(cv_text):
         )
         return json.loads(chat_response.choices[0].message.content)
     except Exception as e:
-        return {
-            "error": f"An error occurred while processing the CV"
-        }
+        return get_personInfos(cv_text, tries - 1, model=model)

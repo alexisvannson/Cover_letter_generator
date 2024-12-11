@@ -2,4 +2,4 @@ python-dotenv
 streamlit
 PyPDF2
 requests
-fpdf
+fpdf2

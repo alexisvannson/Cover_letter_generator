@@ -5,6 +5,13 @@ from PyPDF2 import PdfReader
 from mistral import generate_coverLetter, get_jobInfos, get_personInfos
 from fpdf import FPDF
 from datetime import datetime
+from ftfy import fix_text
+
+# Function to preprocess the text
+def preprocess_text(text):
+    # Fix text encoding issues and smart quotes
+    fixed_text = fix_text(text)
+    return fixed_text
 
 # load the environment variables
 load_dotenv()
@@ -86,6 +93,8 @@ if st.button("Generate Cover Letter"):
         with st.spinner('Generating cover letter...'):
             cover_letter_txt = generate_coverLetter(extracted_text, job_description, additional_thougts)
             
+            # Example usage with your text
+            cover_letter_txt = preprocess_text(cover_letter_txt)
         with st.spinner('Generating pdf...'):
             file_path = "output.pdf"
             

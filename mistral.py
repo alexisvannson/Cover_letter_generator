@@ -12,6 +12,7 @@ class MistralAPI:
         try:
             # Define the prompt for generating the cover letter
             prompt = f"""
+                ### Task:
                 Generate a professional and engaging cover letter based on the following CV and job description:
                 Show that you alligns with the job description and that you have the skills and experience to succeed in the role and that you share the companies' values.
                 Do not invent any skills or experiences that you do not have.
@@ -20,7 +21,7 @@ class MistralAPI:
                 Your total answer must be between 400 and at most 500 tokens long.
                 
                 ### Structure:
-                - Introduction (1 paragraphs)
+                - Introduction (1 paragraph)
                     - State clearly in your opening sentence the purpose for your letter and a brief professional introduction.
                     - Specify why you are interested in that specific position and organization.
                     - Provide an overview of the main strengths and skills you will bring to the role.

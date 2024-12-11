@@ -2,10 +2,11 @@ from dotenv import load_dotenv
 import streamlit as st
 from io import BytesIO
 from PyPDF2 import PdfReader
-from mistral import generate_coverLetter, get_jobInfos, get_personInfos
+from mistral import MistralAPI
 from fpdf import FPDF
 from datetime import datetime
 from ftfy import fix_text
+import os
 
 # Function to preprocess the text
 def preprocess_text(text):
@@ -47,7 +48,7 @@ def save_text_as_pdf(text, output_path, jobInfos, personInfos):
 
     # Save the PDF
     pdf.output(output_path)
-
+    
 # Title of the app
 st.title("Cover Letter Generator")
 
@@ -83,6 +84,11 @@ additional_thougts = st.text_area("Any additional thoughts you want to include i
 
 # Button to generate cover letter
 if st.button("Generate Cover Letter"):
+
+    MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", None)
+        
+    
+    model = MistralAPI(MISTRAL_API_KEY)
     if uploaded_file is None:
         st.warning("Please upload a PDF file first.")
 
@@ -91,15 +97,15 @@ if st.button("Generate Cover Letter"):
         
     else:
         with st.spinner('Generating cover letter...'):
-            cover_letter_txt = generate_coverLetter(extracted_text, job_description, additional_thougts)
+            cover_letter_txt = model.generate_coverLetter(extracted_text, job_description, additional_thougts)
             
             # Example usage with your text
             cover_letter_txt = preprocess_text(cover_letter_txt)
         with st.spinner('Generating pdf...'):
             file_path = "output.pdf"
             
-            jobInfos = get_jobInfos(job_description)
-            personInfos = get_personInfos(extracted_text)
+            jobInfos = model.get_jobInfos(job_description)
+            personInfos = model.get_personInfos(extracted_text)
             
             # Generate the PDF
             save_text_as_pdf(cover_letter_txt, file_path, jobInfos, personInfos)

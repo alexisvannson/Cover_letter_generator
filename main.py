@@ -97,7 +97,7 @@ if st.button("Generate Cover Letter"):
         
     else:
         with st.spinner('Generating cover letter...'):
-            cover_letter_txt = model.generate_coverLetter(extracted_text, job_description, additional_thougts)
+            cover_letter_txt = model.generate_coverLetter_with_feedback(extracted_text, job_description, additional_thougts)
             
             # Example usage with your text
             cover_letter_txt = preprocess_text(cover_letter_txt)

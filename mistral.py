@@ -14,6 +14,7 @@ class MistralAPI:
             prompt = f"""
                 ### Task:
                 Generate a professional and engaging cover letter based on the following CV and job description:
+                It must look like humanly written so, No othrographical errors, no repetitions, and no incoherent sentences and No copy and pasted sentence from the CV.
                 Show that you alligns with the job description and that you have the skills and experience to succeed in the role and that you share the companies' values.
                 Do not invent any skills or experiences that you do not have.
                 You must only include text content starting with 'Dear ' and ending with 'Sincerely, NAME'.
@@ -164,3 +165,135 @@ class MistralAPI:
             return json.loads(chat_response.choices[0].message.content)
         except Exception as e:
             return self.get_personInfos(cv_text, tries - 1, model=model)
+    
+    def review_coverLetter(self, cover_letter, cv_text, job_description, additional_thougts = "", model = "mistral-small-latest", tries = 2, **kwargs):
+        if tries <= 0:
+            return {"error": "An error occurred while reviewing the cover letter"}
+        
+        max_tokens = kwargs.get("max_tokens", 300)
+        
+        schema = {
+                "type": "object",
+                "properties": {
+                    "feedback": {"type": "string"},
+                    "rating": {"type": "number"},
+                }
+            }
+        
+        try:
+            prompt = f"""
+                ### Task:
+                You are an HR with more than 20 years of experience. You have been asked to review a cover letter for a job application.
+                Your task is to provide feedback on the cover letter and does it fit or not the job description. You should provide constructive feedback on the content, structure, and tone of the cover letter.
+                Your task is also to provide a rating from 1 to 10 on how well the cover letter aligns with the job description.
+                Your feedback should very short (< 200 words), clear, concise, and actionable.
+                
+                ### Output format:
+                The output should be a JSON object following the provided JSON Schema.
+                {json.dumps(schema)}
+                
+                ### Cover Letter:
+                {cover_letter}
+                
+                ### CV:
+                {cv_text}
+                
+                ### Job Description:
+                {job_description}
+                
+                ### Additional Information:
+                {additional_thougts}
+                
+                The output should be a JSON object following the provided JSON Schema.
+            """
+            
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ]
+
+            chat_response = self.client.chat.complete(
+                model=model,
+                messages=messages,
+                response_format={
+                    "type": "json_object",
+                },
+                max_tokens=max_tokens,
+            )
+
+            return json.loads(chat_response.choices[0].message.content)
+        
+        except Exception as e:
+            return self.review_coverLetter(cover_letter, cv_text, job_description, additional_thougts, model, tries - 1, **kwargs)
+            
+    def improve_coverLetter(self, cover_letter, cv_text, job_description, review, additional_thougts = "", model = "mistral-small-latest", tries = 2, **kwargs):
+        if tries <= 0:
+            return {"error": "An error occurred while improving the cover letter"}
+        max_tokens = kwargs.get("max_tokens", 500)
+        prompt = f"""
+            ### Task:
+            You are a professional writer with more than 20 years of experience. You have been asked to improve a cover letter for a job application.
+            Show that you alligns with the job description and that you have the skills and experience to succeed in the role and that you share the companies' values.
+            Do not invent any skills or experiences that you do not have.
+            Change the cover letter provided by changing the parts to allign with the provided feedbacks, you must not have a longer cover letetr so Replace the needed parts.
+            You must only include text content starting with 'Dear ' and ending with 'Sincerely, NAME'.
+            Keep ALL paragraphs concise and to the point to ensure the cover letter is engaging and easy to read and short.
+            Your total answer must be between 400 and at most 500 tokens long.
+            
+            ### CV:
+            {cv_text}
+            
+            ### Job Description:
+            {job_description}
+            
+            ### Feedbacks:
+            {review}
+        """
+        
+        prompt += f"""
+                ### Additional Information:
+                {additional_thougts}
+            """ if len(additional_thougts) else ""
+        try:
+            # Prepare the messages for the chat completion
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ]
+
+            # Send the request to the Mistral API
+            chat_response = self.client.chat.complete(
+                model=model,
+                messages=messages,
+                response_format={
+                    "type": "text",  # Assuming the response is plain text
+                },
+                max_tokens=max_tokens,
+            )
+
+            return str(chat_response.choices[0].message.content)
+        except Exception as e:
+            return self.improve_coverLetter(cover_letter, cv_text, job_description, review, additional_thougts, model, tries - 1, **kwargs)
+            
+            
+    def generate_coverLetter_with_feedback(self, cv_text, job_description, additional_thougts = "", max_score = 8, model = "mistral-small-latest", **kwargs):
+        tries = 3
+        cover_letter = self.generate_coverLetter(cv_text, job_description, additional_thougts, model, **kwargs)
+        review = self.review_coverLetter(cover_letter, cv_text, job_description, additional_thougts, model, **kwargs)
+        
+        score = review.get("rating", 0)
+        while score < max_score and tries > 0:
+            curr_cover_letter = self.improve_coverLetter(cover_letter, cv_text, job_description, review, additional_thougts, model, **kwargs)
+            curr_review = self.review_coverLetter(cover_letter, cv_text, job_description, additional_thougts, model, **kwargs)
+            if curr_review.get("rating", 0) > score:
+                cover_letter = curr_cover_letter
+                review = curr_review
+            score = review.get("rating", 0)
+
+            tries -= 1
+       
+        return cover_letter
